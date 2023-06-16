@@ -1,0 +1,178 @@
+# AOL LAB Data Mining and Visualization
+
+**Shafa Amira Qonitatin - 2502009173**
+
+# Explanatory Data Analysis (EDA)
+
+```{r}
+library(readr)
+health_weather <- read_csv("/Users/shafaqonitatingmail.com/Documents/Semester 4/Data Mining and Visualization/Assignment/LAB/USCounties_COVID19_Weather_SocioHealth/archive/US_counties_COVID19_health_weather_data.csv", show_col_types = FALSE)
+head(health_weather)
+```
+
+```{r}
+sociohealth <- read_csv("/Users/shafaqonitatingmail.com/Documents/Semester 4/Data Mining and Visualization/Assignment/LAB/USCounties_COVID19_Weather_SocioHealth/archive/us_county_sociohealth_data.csv", show_col_types = FALSE)
+head(sociohealth)
+```
+
+```{r}
+geometry <- read_csv("/Users/shafaqonitatingmail.com/Documents/Semester 4/Data Mining and Visualization/Assignment/LAB/USCounties_COVID19_Weather_SocioHealth/archive/us_county_geometry.csv", show_col_types = FALSE)
+head(geometry)
+```
+
+```{r}
+print(dim(health_weather))
+print(dim(sociohealth))
+print(dim(geometry))
+```
+
+```{r}
+# delete null values
+health_weather <- na.omit(health_weather)
+sociohealth <- na.omit(sociohealth)
+geometry <- na.omit(geometry)
+```
+
+```{r}
+print(dim(health_weather))
+print(dim(sociohealth))
+print(dim(geometry))
+```
+
+```{r}
+write.csv(health_weather, "/Users/shafaqonitatingmail.com/Documents/Semester 4/Data Mining and Visualization/Assignment/LAB/USCounties_COVID19_Weather_SocioHealth/health_weather.csv", row.names = FALSE)
+
+write.csv(sociohealth, "/Users/shafaqonitatingmail.com/Documents/Semester 4/Data Mining and Visualization/Assignment/LAB/USCounties_COVID19_Weather_SocioHealth/socio_health", row.names = FALSE)
+
+write.csv(geometry, "/Users/shafaqonitatingmail.com/Documents/Semester 4/Data Mining and Visualization/Assignment/LAB/USCounties_COVID19_Weather_SocioHealth/geometry", row.names = FALSE)
+```
+
+```{r}
+total_cases <- sum(health_weather$cases)
+total_deaths <- sum(health_weather$deaths)
+```
+
+```{r}
+library(ggplot2)
+
+data <- data.frame(
+  category = c("Total Cases", "Total Deaths"),
+  sums = c(total_cases, total_deaths)
+)
+
+ggplot(data, aes(x = category, y = sums, fill = category)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Total Cases dan Deaths", x = "Category", y = "Counts") +
+  theme_minimal() +
+  geom_text(aes(label = sums), vjust = -0.5, size = 4) +
+  scale_fill_manual(values = c("lightblue", "steelblue"))
+
+```
+```{r}
+library(ggplot2)
+
+health_weather$date <- as.Date(health_weather$date)
+
+ggplot(health_weather, aes(x = date)) +
+  geom_bar(aes(y = cases, fill = "Total Cases"), stat = "identity") +
+  geom_bar(aes(y = deaths, fill = "Total Deaths"), stat = "identity") +
+  labs(title = "Number of Total Cases dan Deaths", x = "Date", y = "Counts") +
+  scale_fill_manual(values = c("Total Cases" = "lightblue", "Total Deaths" = "steelblue")) +
+  theme_minimal()
+
+```
+```{r}
+cases_counties <- aggregate(cases ~ state + county , data = health_weather, sum)
+print(cases_counties)
+```
+
+```{r}
+cases_counties <- cases_counties[order(-cases_counties$cases), ]
+top5 <- head(cases_counties, 5)
+top5$county <- factor(top5$county, levels = top5$county[order(top5$cases)])
+
+ggplot(data = top5, aes(x = cases, y = county, fill=state)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Top 5 States by Covid-19 Cases", x = "Cases", y = "County") + theme_minimal() +
+  scale_fill_manual(values = c("lightblue", "steelblue"))
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+top_state <- health_weather %>%
+  group_by(state) %>%
+  summarize(total_cases = sum(cases, na.rm = TRUE),
+            mean_temp = mean(mean_temp, na.rm = TRUE)) %>%
+  top_n(20, total_cases)
+
+plot <- ggplot(top_state, aes(x = total_cases, y = mean_temp)) +
+  geom_point(color = "steelblue", size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "orange") +
+  labs(x = "Cases", y = "Mean Temperature", title = "Cases vs. Mean Temperature") +
+  theme_minimal()
+
+print(plot)
+```
+```{r}
+top_state <- health_weather %>%
+  group_by(state) %>%
+  summarize(mean_temp = mean(mean_temp, na.rm = TRUE),
+            below_poverty = mean(percent_below_poverty, na.rm = TRUE)) %>%
+  top_n(20)
+
+plot <- ggplot(top_state, aes(x = mean_temp, y = below_poverty)) +
+  geom_point(color = "steelblue", size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "orange") +
+  labs(x = "Mean Temperature", y = "Percentage Below Poverty", title = "Mean Temperature vs. Below Poverty") +
+  theme_minimal()
+
+print(plot)
+```
+```{r}
+top_state_population <- health_weather %>%
+  group_by(state) %>%
+  summarize(cases = sum(cases, na.rm = TRUE),
+            total_population = mean(total_population, na.rm = TRUE)) %>%
+  top_n(20)
+
+plot <- ggplot(top_state_population, aes(x = cases, y = total_population)) +
+  geom_point(color = "steelblue", size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "orange") +
+  labs(x = "Cases", y = "Total Population", title = "Cases vs. Total Population") +
+  theme_minimal()
+
+print(plot)
+```
+
+```{r}
+percent_diabetes <- aggregate(percent_adults_with_diabetes ~ state, health_weather, median)
+percent_diabetes <- percent_diabetes[order(percent_diabetes$percent_adults_with_diabetes), ]
+percent_diabetes$percent_adults_with_diabetes <- round(percent_diabetes$percent_adults_with_diabetes)
+percent_diabetes <- percent_diabetes[, c("state", "percent_adults_with_diabetes")]
+percent_diabetes <- percent_diabetes[rev(seq_len(nrow(percent_diabetes))), ]
+percent_diabetes$percent_adults_with_diabetes <- as.integer(percent_diabetes$percent_adults_with_diabetes)
+
+print(percent_diabetes)
+```
+
+```{r}
+percent_obesity <- aggregate(percent_adults_with_obesity ~ state, health_weather, median)
+percent_obesity <- percent_obesity[order(percent_obesity$percent_adults_with_obesity), ]
+percent_obesity$percent_adults_with_obesity <- round(percent_obesity$percent_adults_with_obesity)
+percent_obesity <- percent_obesity[, c("state", "percent_adults_with_obesity")]
+percent_obesity <- percent_obesity[rev(seq_len(nrow(percent_obesity))), ]
+
+print(percent_obesity)
+```
+```{r}
+num_hiv <- aggregate(num_hiv_cases ~ state, health_weather, median)
+num_hiv <- num_hiv[order(num_hiv$num_hiv_cases), ]
+num_hiv$num_hiv_cases <- round(num_hiv$num_hiv_cases)
+num_hiv <- num_hiv[, c("state", "num_hiv_cases")]
+num_hiv <- num_hiv[rev(seq_len(nrow(num_hiv))), ]
+
+print(num_hiv)
+```
+
